@@ -1,95 +1,155 @@
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import event.Event;
+import things.classes.*;
+import things.enums.Condition;
+import things.interfaces.Lyable;
+import things.interfaces.Place;
+
 import java.util.ArrayList;
-import java.util.function.Function;
+import java.util.List;
 
 public class Main {
-    public static void main(String[] args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-
-        Living rodion = new Living("Он");
+    public static void prepare(Person rodion, Clothes pants, Clothes hat, Illness cold, Person drunk, Sound quiet, Furniture sofa, Place room, BodyPart head, BodyPart legs) {
         rodion.addForgotten(Condition.COLD);
         rodion.addForgotten(Condition.WORRIED);
-        Clothes hat = new Clothes("шляпа");
-        Clothes pants = new Clothes("панталоны");
+        try {
+            rodion.setLocation(room);
+        } catch (Exception e) {
+            room = new LargeItem("room");
+            try {
+                rodion.setLocation(room);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
         pants.broke();
         pants.makeDirty(new SmallItem("запёкшаяся кровь"));
 
-        rodion.putOnClothes(hat, new BodyPart("голова", rodion));
-        rodion.putOnClothes(pants, new BodyPart("ноги", rodion));
-        Time current = new Time("третий час ночи");
-        ArrayList<Event> text = new ArrayList<>();
-        Furniture sofa = new Furniture("диван");
+        try {
+            rodion.putOnClothes(hat, head);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            rodion.putOnClothes(pants, legs);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            cold.setEffects(Condition.COLD);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-        text.add(new Event(rodion,  "lie",current, new Class[]{Lyable.class}, (Lyable)sofa));
-        text.add(new Event(rodion,"addCondition", current,new Class[]{Condition.class}, Condition.STUNNED));
-        text.add(new Event(rodion, "hear", current, new Class[]{Sound.class},new Sound("срашные, отчаянные вопли") ));
-        ArrayList<Event> thought1 = new ArrayList<>();
-        Living drunk = new Living("пьяные");
+        cold.setStrength(100);
         drunk.addCondition(Condition.DRUNK);
-        drunk.setLocation(new LargeItem("распивочные"));
-
-        thought1.add(new Event(drunk, "goOut", current, new Class[]{}));
-        text.add(new Event(rodion, "think",current, new Class[]{ArrayList.class}, thought1 ));
-
-        text.add(new Event(rodion, "standUp", current));
-        text.add(new Event(rodion, "remember", current));
-
-        ArrayList<Event> thought2 = new ArrayList<>();
-        thought2.add(new Event(rodion,  "addCondition", current,new Class[]{Condition.class}, Condition.MAD));
-        text.add(new Event(rodion, "think",current, new Class[]{ArrayList.class}, thought2 ));
-
-        Illness l = new Illness("лихорадка");
-        l.setEffects(Condition.COLD);
-        text.add(new Event(rodion, "startIllness", new Time ("давно"),new Class[]{Illness.class},l ));
-
-        BodyPart teeth = new BodyPart("зубы", rodion);
-        BodyPart everything = new BodyPart("всё", rodion);
-        text.add(new Event(teeth, "shake", current));
-        text.add(new Event(everything, "shake", current)); // ???
-        OpenableItem door = new OpenableItem("дверь");
-        text.add(new Event(rodion, "open", current,new Class[]{OpenableItem.class},door ));
-
-        Sound quiet = new Sound("тишина");
+        try {
+            drunk.setLocation(new LargeItem("распивочные"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         quiet.setVolume(0);
-        text.add(new Event(rodion, "hear", current, new Class[]{Sound.class},quiet ));
+        sofa.setDefaultPlacesForLie(2);
+        sofa.setDefaultPlacesForSit(5);
+        try {
+            rodion.lie(sofa);
+        } catch (Exception ex) {
+            rodion.wakeUp();
+            try {
+                rodion.lie(sofa);
+            } catch (Exception ignored) {
+            }
+        }
+        rodion.sleep();
+    }
 
-        text.add(new Event(rodion, "lookAtSelf", current));
-        text.add(new Event(rodion,"lookAt", current, new Class[]{PhysicalItem.class},new LargeItem("всё кругом") ));
+    public static List<Event> thought1(Time current, Person drunk) {
+        List<Event> thought1 = new ArrayList<>();
+        thought1.add(new Event(drunk, "goOut", current, new Class[]{}));
+        return thought1;
+    }
 
+    public static List<Event> thought2(Time current, Person rodion) {
+        ArrayList<Event> thought2 = new ArrayList<>();
+        thought2.add(new Event(rodion, "addCondition", current, new Class[]{Condition.class}, Condition.MAD));
+        return thought2;
+    }
+
+    public static List<Event> thought3(Time yesterday, Person rodion, Clothes hat, Furniture sofa, OpenableItem door, LargeItem room) {
         ArrayList<Event> thought3 = new ArrayList<>();
-        LargeItem room = new LargeItem("комната");
-        Time yesterday = new Time("вчера");
-        thought3.add(new Event(rodion, "setLocation" ,yesterday, new Class[]{Place.class}, room));
+
+        thought3.add(new Event(rodion, "setLocation", yesterday, new Class[]{Place.class}, room));
         thought3.add(new Event(rodion, "forgetToLock", yesterday, new Class[]{OpenableItem.class}, door));
-        thought3.add(new Event(rodion, "lie",yesterday, new Class[]{Lyable.class}, (Sitable)sofa));
+        thought3.add(new Event(rodion, "lie", yesterday, new Class[]{Lyable.class}, sofa));
         thought3.add(new Event(hat, "fall", yesterday));
         thought3.add(new Event(new SmallItem("подушка"), "setLocation", yesterday, new Class[]{Place.class}, new LargeItem("пол")));
-        text.add(new Event(rodion, "think",current, new Class[]{ArrayList.class}, thought3 ));
+        return thought3;
+    }
 
-        ArrayList<Event> thought4 = new ArrayList<>();
-        Living somebody = new Living("кто-то");
-        thought4.add(new Event(somebody,"setLocation" ,yesterday,new Class[]{ Place.class}, room));
-
+    public static List<Event> thought41(Time yesterday) {
         ArrayList<Event> thought41 = new ArrayList<>();
-        Living newRodion = new Living("Я");
-        thought41.add(new Event(newRodion, "addCondition", yesterday, new Class[]{Condition.class}, Condition.DRUNK ));
-        thought4.add(new Event(rodion, "think",current, new Class[]{ArrayList.class}, thought41 ));;
-        text.add(new Event(rodion, "think",current, new Class[]{ArrayList.class}, thought4 ));
+        Person newRodion = new Person("Я");
+        thought41.add(new Event(newRodion, "addCondition", yesterday, new Class[]{Condition.class}, Condition.DRUNK));
+        return thought41;
+    }
 
+    public static List<Event> thought4(Time yesterday, LargeItem room, Person rodion, Time current) {
+        ArrayList<Event> thought4 = new ArrayList<>();
+        Person somebody = new Person("кто-то");
+        thought4.add(new Event(somebody, "setLocation", yesterday, new Class[]{Place.class}, room));
+        thought4.add(new Event(rodion, "think", current, new Class[]{List.class}, thought41(yesterday)));
+        return thought4;
+    }
 
-        text.add(new Event(rodion, "setLocation", current,new Class[]{Place.class}, new LargeItem("у окона")));
-        text.add(new Event(rodion, "addCondition", current,new Class[]{Condition.class}, Condition.LIGHT ));
-        text.add(new Event(rodion, "lookAtSelf", current));
-        Event e = new Event(rodion, "takeOfClothes", current);
-        e.setReturnVal(true);
-        text.add(e);
-        Event event = new Event(rodion,"lookAt", current, new Class[]{ArrayList.class} );
-        event.setTimes(3);
-        text.add(event);
-
-        Object cur = null;
-        for (Event x: text){
-            cur = x.exec(cur);
+    public static void applyTime(Time time, PhysicalItem... args) {
+        for (PhysicalItem item : args) {
+            if (time.ifDark()) item.addCondition(Condition.DARK);
+            else item.addCondition(Condition.LIGHT);
         }
+    }
+
+    public static void main(String[] args) throws Exception {
+        BodyPart teeth = new BodyPart("зубы");
+        BodyPart legs = new BodyPart("ноги");//
+        BodyPart head = new BodyPart("голова");
+        Person rodion = new Person("Он", teeth, legs, head);
+        Clothes hat = new Clothes("шляпа");
+        Clothes pants = new Clothes("панталоны");
+        Time current = new Time("третий час ночи");
+        Furniture sofa = new Furniture("диван");
+        Illness cold = new Illness("лихорадка");
+        Person drunk = new Person("пьяные");
+
+        LargeItem room = new LargeItem("комната");
+        LargeItem corridor = new LargeItem("коридор");
+        OpenableItem door = new OpenableItem("дверь", room, corridor);//
+        Sound quiet = new Sound("тишина");
+        Time yesterday = new Time("вчера");
+
+
+        prepare(rodion, pants, hat, cold, drunk, quiet, sofa, room, head, legs);
+        applyTime(current, rodion, hat, pants, sofa, drunk, teeth, door, room, corridor);
+
+        rodion.addCondition(Condition.STUNNED);
+        rodion.hear(new Sound("срашные, отчаянные вопли"));
+
+        rodion.think(thought1(current, drunk));//
+        rodion.standUp();//
+        rodion.remember();
+        rodion.think(thought2(current, rodion));//
+        rodion.startIllness(cold);
+        teeth.shake();
+        rodion.shakeAll();
+        rodion.open(door);//
+        rodion.hear(quiet);
+        rodion.lookAtSelf();//
+        rodion.lookAt(new LargeItem("всё кругом"));//
+        rodion.think(thought3(yesterday, rodion, hat, sofa, door, room));//
+
+        rodion.think(thought4(yesterday, room, rodion, current));//
+        rodion.setLocation(new LargeItem("у окона"));//
+        rodion.addCondition(Condition.LIGHT);
+        rodion.lookAtSelf();//
+        List<PhysicalItem> clothes = new ArrayList<>(rodion.takeOfClothes());//
+        rodion.lookAt(clothes);
     }
 }
